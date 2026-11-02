@@ -1,0 +1,4 @@
+html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,system-ui,sans-serif}
+main{padding:calc(16px + env(safe-area-inset-top)) 16px 16px}
+.muted{color:rgba(235,235,245,.6)}.big{font-size:66px;font-weight:600;font-variant-numeric:tabular-nums}
+pre{color:rgba(235,235,245,.6);white-space:pre-wrap;font:12px ui-monospace,monospace}.err{color:#ff453a}
