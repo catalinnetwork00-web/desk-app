@@ -8,6 +8,8 @@ function setup(cv){
   if (cv.width !== w*dpr || cv.height !== h*dpr){ cv.width = w*dpr; cv.height = h*dpr; }
   const x = cv.getContext('2d'); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,w,h); return {x, w, h};
 }
+function dotted(x, w, y){ x.setLineDash([0, 6]); x.lineCap = 'round'; x.strokeStyle = 'rgba(235,235,245,0.35)'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(4, y); x.lineTo(w - 4, y); x.stroke(); x.setLineDash([]); x.lineCap = 'butt'; }
 const FONT = '600 12px -apple-system, "SF Pro Text", system-ui, sans-serif';
 
 // Home line chart. data = chart_{RANGE}.json. Animates a new last point (250ms) and fades new marks (200ms).
@@ -18,11 +20,11 @@ function line(cv, data, prev){
   const t0 = performance.now();
   function frame(now){
     const k = grow ? Math.min(1, (now - t0) / 250) : 1, ka = RM() ? 1 : Math.min(1, (now - t0) / 200);
-    const {x, w, h} = setup(cv), top = 44, bot = h - 10;
+    const {x, w, h} = setup(cv), top = 44, bot = h - 10;   // flat/empty handled below
     if (!pts.length){                       // empty: dashed start line only
-      if (start != null || true){ x.setLineDash([4,4]); x.strokeStyle = COL.t3; x.lineWidth = 1; x.beginPath(); x.moveTo(0, (top+bot)/2); x.lineTo(w, (top+bot)/2); x.stroke(); x.setLineDash([]); }
-      return;
+      dotted(x, w, h * 0.62); return;
     }
+    if (cv.dataset.flat){ dotted(x, w, h * 0.62); return; }   // no trades: flat start stack as a dotted baseline
     const vals = pts.map(p => p[1]).concat(start != null ? [start] : []);
     let lo = Math.min(...vals), hi = Math.max(...vals); if (hi - lo < 1e-9){ lo -= 1; hi += 1; } const pad = (hi-lo)*0.08; lo -= pad; hi += pad;
     const t1 = pts[0][0], t2 = pts[pts.length-1][0], span = Math.max(1, t2 - t1);

@@ -20,6 +20,16 @@ const pct = v => num(v) ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—';
 const price = v => !num(v) ? '—' : v >= 1 ? '$' + v.toLocaleString('en-US', {maximumFractionDigits:4}) : v <= 0 ? '$0' : '$' + v.toFixed(Math.min(12, 3 - Math.floor(Math.log10(v))));
 const big = v => !num(v) ? '—' : v >= 1e9 ? '$' + (v/1e9).toFixed(2) + 'B' : v >= 1e6 ? '$' + (v/1e6).toFixed(2) + 'M' : v >= 1e3 ? '$' + (v/1e3).toFixed(1) + 'K' : '$' + v.toFixed(0);
 const hhmm = ts => num(ts) ? new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : '';
+const short = m => (typeof m === 'string' && m.length > 12) ? m.slice(0,4) + '…' + m.slice(-4) : (m || '');
+// raw 6-char mint codes (nm() fallback) become a short mint; real names/symbols pass through
+const dname = (name, mint) => { const n = String(name == null ? '' : name); if (!mint) return n; const c = mint.slice(0,6);
+  return !n || n === c ? short(mint) : n.split(c).join(short(mint)); };
+function hue(s){ let h = 0; for (const ch of String(s || '?')) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
+function inits(n){ const w = String(n || '?').replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/); return ((w[0] || '?')[0] + (w[1] ? w[1][0] : (w[0] || '').slice(1,2))).toUpperCase(); }
+const coinAva = (name, mint, sz, img) => img && /^https:\/\//.test(img) ? `<span class="cava" style="--s:${sz}px"><img src="${esc(img)}" alt=""></span>`
+  : `<span class="cava" style="--s:${sz}px;background:hsl(${hue(mint || name)} 45% 28%);color:hsl(${hue(mint || name)} 80% 82%)">${esc(inits(name))}</span>`;
+const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#00d35a"/><stop offset="1" stop-color="#64d2ff"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#111417"/><path d="M8 21.5l5.2-5.2 3.6 3.6L24 12.7" stroke="url(#lg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="12.7" r="2.2" fill="#64d2ff"/></svg>';
+const killPill = '<span class="kpill">Killed</span>';
 const sign = s => /^\+/.test(s) ? 'green' : /^-/.test(s) ? 'red' : '';
 
 // ---------------- data layer ----------------
@@ -76,12 +86,14 @@ function errRow(){
 }
 const paperPill = mode => mode === 'PAPER' ? '<span class="pill paper">PAPER</span>' : '';
 const sk = (h, w) => `<div class="sk" style="height:${h}px;${w ? 'width:' + w : ''};margin:8px 16px"></div>`;
-const tg = cmd => `<div class="tg">Change this with Telegram: <code>${esc(cmd)}</code></div>`;
+const tg = () => '';   // mockup: per-card hints moved to one Commands card in Account
 function actRow(a){
   const nm = (a.title || '').split(' ').slice(1).join(' ');
   const href = a.mint ? `#/${a.opens === 'audit' ? 'audit' : 'coin'}/${encodeURIComponent(a.mint)}` : '';
-  return `<a class="row" ${href ? `href="${href}"` : ''}><div class="ava">${esc((nm || '?').slice(0,1).toUpperCase())}</div>
-   <div class="m"><div>${esc(a.title)}</div><div class="sec" style="font-size:13px">${esc(a.subtitle)}${a.kind === 'bought' && a.ts ? ' · ' + hhmm(a.ts) : ''}</div></div>
+  const kill = a.kind === 'rejected' || /^(killed|rejected)/i.test(a.title || '');
+  const verb = (a.title || '').split(' ')[0], dn = dname(nm, a.mint);
+  return `<a class="row" ${href ? `href="${href}"` : ''}>${coinAva(dn, a.mint, 40, a.image)}
+   <div class="m"><div>${kill ? `${esc(dn)} <span class="kpill">${esc(/^(killed|rejected|skipped)$/i.test(verb) ? verb : 'Killed')}</span>` : `<span class="sec">${esc(verb)}</span> ${esc(dn)}`}</div><div class="sec" style="font-size:13px">${esc(a.subtitle)}${a.kind === 'bought' && a.ts ? ' · ' + hhmm(a.ts) : ''}</div></div>
    <div class="v ${sign(a.value)}">${esc(a.value)}</div></a>`;
 }
 function toast(t){ const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
@@ -92,14 +104,14 @@ function card(a){
   if (a.agent === 'scanner'){
     const f = a.feed || [];
     return `<a class="acard" href="#/agents">${top('Scanner', '#64d2ff', a.title)}
-      <div class="feed">${f.length ? f.map(s => s.verdict === 'pass' ? `<div><span>${esc(s.name)}</span> <span class="green">${esc(s.text)}</span></div>`
-          : `<div class="k"><b>${esc(s.name)}</b> · <span class="red">${esc(s.text)}</span></div>`).join('') : `<div class="sec">${esc(a.empty || 'Listening for graduations')}</div>`}</div></a>`;
+      <div class="feed">${f.length ? f.map(s => `<div class="fi">${coinAva(dname(s.name, s.mint), s.mint, 24, s.image)}<span class="fn">${esc(dname(s.name, s.mint))}</span>${s.verdict === 'pass'
+          ? `<span class="ppill">Passed</span><span class="fr green">${esc(s.text)}</span>` : `${killPill}<span class="fr">${esc(s.text)}</span>`}</div>`).join('') : `<div class="sec">${esc(a.empty || 'Listening for graduations')}</div>`}</div></a>`;
   }
   if (a.agent === 'auditor'){
     const L = (a.strips && a.strips.layers) || [];
     const strips = Array.from({length:8}, (_, i) => { const l = L.find(x => x.n === i+1); return `<i class="${l ? (l.ok ? 'g' : 'r') : ''}"></i>`; }).join('');
     return `<a class="acard" href="${a.strips ? '#/audit/' + encodeURIComponent(a.strips.mint) : '#/agents'}">${top('Auditor', '#fff', a.title)}
-      ${a.strips ? `<div class="sec" style="margin-top:8px">${esc(a.strips.name || '')}</div>` : ''}
+      ${a.strips ? `<div class="sec" style="margin-top:8px">${esc(dname(a.strips.name, a.strips.mint))}</div>` : ''}
       <div class="strips">${strips}</div>
       <div style="font-size:17px">${esc(a.status || (a.strips ? '' : 'No coin taken apart yet'))}</div>
       <div class="sec" style="margin-top:auto">${esc(a.rejectedText)}</div></a>`;
@@ -122,7 +134,7 @@ function navbar(){
   const rows = (cache['activity.json'] || {}).rows || (st && st.activity) || [];
   const seen = +localStorage.getItem('seen') || 0;
   const unread = rows.some(r => r.id > seen && r.kind !== 'rejected');
-  return `<div class="nav"><a class="tap" href="#/account"><span class="avatar">G</span></a><a class="title" href="#/agents">Grok Bot ›</a>
+  return `<div class="nav"><a class="tap" href="#/account" aria-label="Account">${LOGO}</a><a class="title brand" href="#/agents">yCeeBee <span>Desk</span></a>
    <button class="tap" id="sbtn" aria-label="Search">${ICON.search}</button>
    <a class="tap bell" href="#/activity" id="bell" aria-label="Notifications">${ICON.bell}${unread ? '<span class="dot"></span>' : ''}</a></div>
    <div id="sbox" hidden class="gut" style="padding-bottom:8px"><input class="search" id="sq" placeholder="Name, symbol or mint" autocomplete="off"><div id="sres" class="rows"></div></div>`;
@@ -131,20 +143,22 @@ function home(){
   const st = cache['state.json'], ch = cache['chart_' + range + '.json'];
   if (!st) return navbar() + errRow() + sk(72, '70%') + sk(20, '40%') + sk(230) + sk(40) + `<div style="display:flex;gap:10px;padding:0 16px"><div class="sk" style="flex:0 0 var(--cardw);aspect-ratio:504/470;margin:0;border-radius:calc(var(--cardw)*42/504)"></div></div>` + sk(60) + sk(60);
   const acts = st.activity || [];
-  return navbar() + errRow() + `
+  const P = (ch && ch.points) || [], flat = ch && (!P.length || (!(ch.marks || []).length && P.every(p => Math.abs(p[1] - P[0][1]) < 1e-9)));
+  return navbar() + errRow() + `<div class="hgrid"><section class="hl">
    <div class="bal"><span class="big odo" id="odo"></span>${paperPill(st.mode)}</div>
    <div class="today"><span class="${(st.todayPct||0) >= 0 ? 'green' : 'red'}">${pct(st.todayPct)}</span><span class="sec">today</span>
      ${num(st.multiplier) ? `<span class="pill mult">${st.multiplier.toFixed(2)}×</span>` : ''}</div>
-   <div class="chart">${ch ? '' : '<div class="sk" style="position:absolute;inset:0 16px"></div>'}<canvas id="line"></canvas>${ch && ch.empty ? `<div class="emp">${esc(ch.empty)}</div>` : ''}</div>
+   <div class="chart ${flat ? 'flat' : ''}">${ch ? '' : '<div class="sk" style="position:absolute;inset:0 16px"></div>'}<canvas id="line" ${flat ? 'data-flat="1"' : ''}></canvas>${flat ? `<div class="emp">No trades yet</div>` : ''}</div>
    <div class="ranges">${['LIVE','1H','4H','1D','1W','ALL'].map(r => `<button data-r="${r}" class="${r === range ? 'on' : ''}">${r}</button>`).join('')}</div>
+   </section><section class="hr">
    <div class="h2"><span>Agents · ${esc(st.agentsRunning)} running</span></div>
-   <div class="car" id="car">${(st.agents || []).map(card).join('')}</div>
-   <div class="h2"><span>Activity</span><a href="#/activity">See all</a></div>
-   <div class="rows">${acts.length ? acts.slice(0,5).map(actRow).join('') : '<div class="emptyline">Nothing yet tonight</div>'}</div>`;
+   <div class="car" id="car">${(st.agents || []).map(card).join('')}</div></section>
+   <section class="ha"><div class="h2"><span>Activity</span><a href="#/activity">See all</a></div>
+   <div class="rows">${acts.length ? acts.slice(0,5).map(actRow).join('') : '<div class="emptyline">Nothing yet tonight</div>'}</div></section></div>`;
 }
 function agentsTab(){
   const st = cache['state.json'];
-  let h = `<div class="nav"><span class="title" style="font-size:28px">Agents</span></div>` + errRow();
+  let h = `<div class="nav"><span class="title lg">Agents</span></div><div class="agrid">` + errRow();
   AG.forEach(n => {
     const d = cache[`agents_${n}.json`], c = st && (st.agents || []).find(a => a.agent === n);
     if (!d){ h += `<div class="fcard"><div class="sk" style="height:22px;margin:0 0 10px"></div><div class="sk" style="height:120px;margin:0"></div></div>`; return; }
@@ -155,17 +169,17 @@ function agentsTab(){
        <span style="flex:1"></span><span class="sw ${d.running ? 'on' : ''}" role="switch" aria-checked="${d.running}" aria-disabled="true" title="read-only in plan B"></span></div>
      ${n === 'risk' && d.pauseLocked ? '<div class="tg">Locked while a position is open</div>' : tg(d.running ? '/pause ' + n : '/resume ' + n)}
      <div style="margin-top:10px">${ds.length ? ds.map(x => `<div class="dec"><span class="sec">${hhmm(x.ts)}</span>
-        <span>${url(x.coin_url) ? `<a href="${url(x.coin_url)}" target="_blank" rel="noopener">${esc(x.name)}</a>` : esc(x.name)}</span>
-        <span class="${/pass|filled|trail/.test(x.verdict) ? 'green' : /kill|reject|stop/.test(x.verdict) ? 'red' : 'sec'}">${esc(x.verdict)}</span>
+        <span class="dn">${coinAva(dname(x.name, x.mint), x.mint, 20, x.image)}${url(x.coin_url) ? `<a href="${url(x.coin_url)}" target="_blank" rel="noopener">${esc(dname(x.name, x.mint))}</a>` : esc(dname(x.name, x.mint))}</span>
+        ${/kill|reject/.test(x.verdict) ? killPill.replace('Killed', esc(x.verdict === 'kill' ? 'Killed' : x.verdict)) : `<span class="${/pass|filled|trail|win/.test(x.verdict) ? 'green' : /stop|loss/.test(x.verdict) ? 'red' : 'sec'}">${esc(x.verdict)}</span>`}
         <span class="r">${esc(x.reason)}</span></div>`).join('') : `<div class="sec" style="padding:8px 0">${n === 'scanner' ? 'Listening for graduations' : 'No decisions yet'}</div>`}</div>
      <a class="tap" style="color:var(--green);justify-content:flex-start" href="#/account/${n}">Settings ›</a></div>`;
   });
-  return h;
+  return h + '</div>';
 }
 let actPages = 1;
 function activityTab(){
   const a = cache['activity.json'];
-  let h = `<div class="nav"><span class="title" style="font-size:28px">Activity</span></div>` + errRow();
+  let h = `<div class="nav"><span class="title lg">Activity</span></div>` + errRow();
   if (!a) return h + [1,2,3,4,5,6].map(() => sk(52)).join('');
   let rows = a.rows || [];
   const pages = ((cache['index.json'] || {}).activityPages || []).filter(p => p !== 'activity.json');
@@ -214,8 +228,8 @@ function coinScr(mint){
   if (!c) return h + sk(30, '60%') + sk(18, '50%') + sk(50, '55%') + sk(240) + sk(120) + sk(50);
   const p = c.position, e = c.exit, s = c.stats || {};
   const left = e && num(e.timeLeftS) ? Math.max(0, e.timeLeftS - Math.round((Date.now() - (cache['_t' + f] || Date.now()))/1000)) : null;
-  return h + `<div class="gut" style="display:flex;align-items:center;gap:8px"><span style="font:600 28px var(--disp)">${esc(c.name || c.symbol)}</span>${c.shield ? `<span class="chip">${esc(c.shield)}</span>` : ''}</div>
-   <div class="gut sec">${esc(c.ageText || '')}</div>
+  return h + `<div class="gut" style="display:flex;align-items:center;gap:8px">${coinAva(c.symbol || c.name, c.mint, 36, c.image)}<span class="cname" style="font:600 24px/1.2 var(--disp);flex:1;min-width:0">${esc(dname(c.name || c.symbol, c.mint))}</span>${c.shield ? `<span class="chip">${esc(c.shield)}</span>` : ''}</div>
+   <div class="gut sec">${esc(short(c.mint))} · ${esc(c.ageText || '')}</div>
    <div class="price">${price(c.price)}</div>
    ${num(c.sinceEntryPct) ? `<div class="gut ${c.sinceEntryPct >= 0 ? 'green' : 'red'}">${c.sinceEntryPct >= 0 ? '▲' : '▼'} ${Math.abs(c.sinceEntryPct).toFixed(2)}% since entry</div>` : ''}
    <div class="chart" style="height:240px;margin:12px 16px 0"><canvas id="cand"></canvas>${(c.candles || []).length ? '' : '<div class="emp">No price yet</div>'}</div>
@@ -232,7 +246,7 @@ function coinScr(mint){
 const fmtLeft = s => num(s) ? `${Math.floor(s/3600)}h ${String(Math.floor(s%3600/60)).padStart(2,'0')}m` : '—';
 function accountTab(){
   const a = cache['account.json'], s = cache['settings.json'];
-  let h = `<div class="nav"><span class="title" style="font-size:28px">Account</span></div>` + errRow();
+  let h = `<div class="nav"><span class="title lg">Account</span></div>` + errRow();
   if (!a || !s) return h + sk(90) + sk(44) + sk(44) + sk(44) + sk(300);
   const R = s.ranges || {}, G = s.groups || {};
   const rowsFor = (g) => Object.keys(R).filter(k => k.startsWith(g + '.')).map(k => {
@@ -255,15 +269,19 @@ function accountTab(){
      ${url(a.SIGNUP_URL) ? `<button class="kv" style="min-height:48px;width:100%;border-top:.5px solid var(--sep)" id="invite" data-u="${url(a.SIGNUP_URL)}"><span>Invite a friend</span><span class="sec">›</span></button>` : ''}</div>
    <div class="fcard"><div class="kv"><span>Telegram</span><span class="${a.telegram && a.telegram.connected ? 'green' : 'sec'}">${a.telegram && a.telegram.connected ? 'connected' : 'not connected'}</span></div>
      <div class="kv"><span>Send test push</span><span class="sec">read-only</span></div>${tg('/test')}
-     <div class="kv" style="border-top:.5px solid var(--sep);margin-top:8px"><span>${standalone ? 'Enable notifications' : 'Notifications'}</span><span class="sec">off</span></div>
-     <div class="tg">plan B: no web push, Telegram only</div></div>
+     <div class="kv" style="border-top:.5px solid var(--sep);margin-top:8px"><span>${standalone ? 'Enable notifications' : 'Notifications'}</span><span class="sec">Telegram only</span></div></div>
+   <div class="fcard"><div class="hd">Commands</div><div class="sec" style="font-size:13px;margin:4px 0 8px">Changes go through Telegram. Send these to the desk bot (with or without /).</div>
+     ${[['/status','Desk summary'],['/pause <agent>','scanner, auditor, analyst, executor, risk'],['/resume <agent>','Resume a paused agent'],
+        ['/set <key> <value>','e.g. /set risk.stop_pct 8'],['/mode PAPER · /mode LIVE','Switch mode (LIVE needs confirm)'],['/stack <usd>','LIVE stack'],
+        ['/why X · /buy X · /sell X','X = name, symbol or mint'],['/report · /invite · /test','Night report, invite link, test push']]
+       .map(r => `<div class="cmd"><code>${esc(r[0])}</code><span>${esc(r[1])}</span></div>`).join('')}</div>
    ${AG.concat(['desk']).map(g => `<div class="fcard" id="set-${g}"><div class="hd">${esc(AGN[g] || 'Desk')}</div>${rowsFor(g)}</div>`).join('')}`;
 }
 
 // ---------------- render ----------------
 function render(fresh){
   const v = $('#view'); if (!v) return;
-  if (!BASE || !D){ v.innerHTML = `<div class="nav"><span class="title">Grok Bot</span></div><div class="emptyline" style="padding-top:120px">Open this app once with the link from Grok Bot.</div>`; tabs(); return; }
+  if (!BASE || !D){ v.innerHTML = `<div class="nav"><span class="title brand">yCeeBee <span>Desk</span></span></div><div class="emptyline" style="padding-top:120px">Open this app once with the link from Grok Bot.</div>`; tabs(); return; }
   const car = $('#car'), sl = car ? car.scrollLeft : 0, odov = $('#odo') ? $('#odo').innerHTML : null, odod = $('#odo') ? $('#odo').dataset.v : null;
   const sq = $('#sq'), sqv = sq && !$('#sbox').hidden ? sq.value : null;
   const r = route[0];
