@@ -238,7 +238,9 @@ function coinScr(mint){
      <div><span class="sec">24h volume</span><b>${big(s.volume24h)}</b></div><div><span class="sec">Holders</span><b>${esc(s.holdersText || 'n/a')}</b></div></div>
    ${p ? `<div class="fcard"><div class="kv"><span>Your position</span><span>${esc(p.text)}</span></div>
       ${num(p.entryMcapUsd) ? `<div class="kv"><span class="sec">Bought at mcap ${kmc(p.entryMcapUsd)}${p.entryMcapComputed ? ' (computed)' : ''}</span><span>${p.open ? (num(p.mcapUsd) ? 'now ' + kmc(p.mcapUsd) : '') : (num(p.exitMcapUsd) ? 'sold at ' + kmc(p.exitMcapUsd) : '')}</span></div>` : ''}
-      ${!p.open && p.exitReason ? `<div class="kv"><span class="sec">Closed · ${esc(p.exitReason)}</span><span class="${(p.pnlUsd||0) >= 0 ? 'green' : 'red'}">${num(p.pnlUsd) ? (p.pnlUsd >= 0 ? '+' : '-') + money(Math.abs(p.pnlUsd)) : '—'}</span></div>` : ''}</div>` : ''}
+      ${!p.open && p.exitReason ? `<div class="kv"><span class="sec">Closed · ${esc(p.exitReason)} · total net</span><span class="${(p.pnlUsd||0) >= 0 ? 'green' : 'red'}">${num(p.pnlUsd) ? (p.pnlUsd >= 0 ? '+' : '-') + money(Math.abs(p.pnlUsd)) : '—'}</span></div>` : ''}
+      ${!p.open && num(p.receivedUsd) && num(p.spentUsd) ? `<div class="kv"><span class="sec">Received vs spent</span><span>${money(p.receivedUsd)} for ${money(p.spentUsd)}</span></div>` : ''}
+      ${p.open && num(p.bookedPnlUsd) ? `<div class="kv"><span class="sec">Half sold · got ${money(p.receivedUsd)}</span><span class="${p.bookedPnlUsd >= 0 ? 'green' : 'red'}">${(p.bookedPnlUsd >= 0 ? '+' : '-') + money(Math.abs(p.bookedPnlUsd))} booked</span></div>` : ''}</div>` : ''}
    ${e ? `<div class="fcard"><div class="hd" style="margin-bottom:6px">Exit</div>
       <div class="kv"><span class="sec">Stop line</span><span class="red">${price(e.stopLine)} · -${esc(e.stopPct)}%</span></div>
       <div class="kv"><span class="sec">Trail line</span><span>${e.trailActive ? price(e.trailLine) : 'starts at ' + price(e.trailStartsAt)}</span></div>
