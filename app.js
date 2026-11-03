@@ -30,6 +30,7 @@ const coinAva = (name, mint, sz, img) => img && /^https:\/\//.test(img) ? `<span
   : `<span class="cava" style="--s:${sz}px;background:hsl(${hue(mint || name)} 45% 28%);color:hsl(${hue(mint || name)} 80% 82%)">${esc(inits(name))}</span>`;
 const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#00d35a"/><stop offset="1" stop-color="#64d2ff"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="#111417"/><path d="M8 21.5l5.2-5.2 3.6 3.6L24 12.7" stroke="url(#lg)" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="12.7" r="2.2" fill="#64d2ff"/></svg>';
 const killPill = '<span class="kpill">Killed</span>';
+const kmc = v => !num(v) ? '—' : v >= 1e6 ? '$' + (v/1e6).toFixed(2) + 'M' : v >= 1e3 ? '$' + (v/1e3).toFixed(1) + 'K' : '$' + Math.round(v);
 const sign = s => /^\+/.test(s) ? 'green' : /^-/.test(s) ? 'red' : '';
 
 // ---------------- data layer ----------------
@@ -170,8 +171,8 @@ function agentsTab(){
      ${n === 'risk' && d.pauseLocked ? '<div class="tg">Locked while a position is open</div>' : tg(d.running ? '/pause ' + n : '/resume ' + n)}
      <div style="margin-top:10px">${ds.length ? ds.map(x => `<div class="dec"><span class="sec">${hhmm(x.ts)}</span>
         <span class="dn">${coinAva(dname(x.name, x.mint), x.mint, 20, x.image)}${url(x.coin_url) ? `<a href="${url(x.coin_url)}" target="_blank" rel="noopener">${esc(dname(x.name, x.mint))}</a>` : esc(dname(x.name, x.mint))}</span>
-        ${/kill|reject/.test(x.verdict) ? killPill.replace('Killed', esc(x.verdict === 'kill' ? 'Killed' : x.verdict)) : `<span class="${/pass|filled|trail|win/.test(x.verdict) ? 'green' : /stop|loss/.test(x.verdict) ? 'red' : 'sec'}">${esc(x.verdict)}</span>`}
-        <span class="r">${esc(x.reason)}</span></div>`).join('') : `<div class="sec" style="padding:8px 0">${n === 'scanner' ? 'Listening for graduations' : 'No decisions yet'}</div>`}</div>
+        ${/kill|reject/.test(x.verdict) ? killPill.replace('Killed', esc(x.verdict === 'kill' ? 'Killed' : x.verdict)) : `<span class="${num(x.pnlUsd) ? (x.pnlUsd > 0 ? 'green' : x.pnlUsd < 0 ? 'red' : 'sec') : /pass|filled|trail|win/.test(x.verdict) ? 'green' : /stop|loss/.test(x.verdict) ? 'red' : 'sec'}">${esc(x.verdict)}</span>`}
+        <span class="r">${esc(x.reason)}${num(x.entryMcapUsd) ? `<br><span class="sec" style="font-size:12px">Bought at mcap ${kmc(x.entryMcapUsd)}${x.entryMcapComputed ? '*' : ''}${num(x.exitMcapUsd) ? ' · sold at ' + kmc(x.exitMcapUsd) : ''}</span>` : ''}</span></div>`).join('') : `<div class="sec" style="padding:8px 0">${n === 'scanner' ? 'Listening for graduations' : 'No decisions yet'}</div>`}</div>
      <a class="tap" style="color:var(--green);justify-content:flex-start" href="#/account/${n}">Settings ›</a></div>`;
   });
   return h + '</div>';
@@ -236,6 +237,7 @@ function coinScr(mint){
    <div class="stats"><div><span class="sec">Market cap</span><b>${big(s.marketCap)}</b></div><div><span class="sec">Liquidity</span><b>${big(s.liquidityUsd)}</b></div>
      <div><span class="sec">24h volume</span><b>${big(s.volume24h)}</b></div><div><span class="sec">Holders</span><b>${esc(s.holdersText || 'n/a')}</b></div></div>
    ${p ? `<div class="fcard"><div class="kv"><span>Your position</span><span>${esc(p.text)}</span></div>
+      ${num(p.entryMcapUsd) ? `<div class="kv"><span class="sec">Bought at mcap ${kmc(p.entryMcapUsd)}${p.entryMcapComputed ? ' (computed)' : ''}</span><span>${p.open ? (num(p.mcapUsd) ? 'now ' + kmc(p.mcapUsd) : '') : (num(p.exitMcapUsd) ? 'sold at ' + kmc(p.exitMcapUsd) : '')}</span></div>` : ''}
       ${!p.open && p.exitReason ? `<div class="kv"><span class="sec">Closed · ${esc(p.exitReason)}</span><span class="${(p.pnlUsd||0) >= 0 ? 'green' : 'red'}">${num(p.pnlUsd) ? (p.pnlUsd >= 0 ? '+' : '-') + money(Math.abs(p.pnlUsd)) : '—'}</span></div>` : ''}</div>` : ''}
    ${e ? `<div class="fcard"><div class="hd" style="margin-bottom:6px">Exit</div>
       <div class="kv"><span class="sec">Stop line</span><span class="red">${price(e.stopLine)} · -${esc(e.stopPct)}%</span></div>
