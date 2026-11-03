@@ -283,6 +283,32 @@ function accountTab(){
    ${AG.concat(['desk']).map(g => `<div class="fcard" id="set-${g}"><div class="hd">${esc(AGN[g] || 'Desk')}</div>${rowsFor(g)}</div>`).join('')}`;
 }
 
+// ---------------- open trades ----------------
+const held = s => !num(s) ? '—' : s < 3600 ? Math.max(1, Math.round(s/60)) + 'm' : s < 86400 ? Math.floor(s/3600) + 'h ' + Math.round(s%3600/60) + 'm' : Math.floor(s/86400) + 'd ' + Math.round(s%86400/3600) + 'h';
+const usd = v => !num(v) ? '—' : (v >= 0 ? '+' : '-') + money(Math.abs(v));
+function tradesTab(){
+  const t = cache['trades.json'];
+  let h = `<div class="nav"><span class="title lg">Open trades</span></div>` + errRow();
+  if (!t) return h + sk(120) + sk(220) + sk(220);
+  const P = t.positions || [], tc = t.openPnlUsd >= 0 ? 'green' : 'red';
+  h += `<div class="thero"><div class="tl">Open PnL</div><div class="tv ${tc}">${usd(t.openPnlUsd)}</div>
+    <div class="ts"><span><b>${t.count}</b> open</span>${num(t.bookedOpenUsd) && t.bookedOpenUsd ? `<span>Booked <b class="${t.bookedOpenUsd >= 0 ? 'green' : 'red'}">${usd(t.bookedOpenUsd)}</b></span>` : ''}</div></div>`;
+  if (!P.length) return h + `<div class="tempty"><div class="orb"></div><div>No open trades</div><div class="sec">The desk is watching. New buys show up here.</div></div>`;
+  return h + P.map(p => {
+    const c = !num(p.pct) ? '' : p.pct >= 0 ? 'up' : 'dn', nm = dname(p.name || p.symbol, p.mint), est = x => x ? '<i title="estimated">~</i>' : '';
+    const trail = p.trailActive ? `<span class="green">On · ${p.trailPct}% below peak</span>` : `<span class="sec">Starts at +${p.trailStartsPct}%</span>`;
+    return `<a class="tcard ${c}" href="#/coin/${encodeURIComponent(p.mint)}">
+      <div class="th">${coinAva(nm, p.mint, 44)}<div class="tn"><div class="n">${esc(nm)}</div><span class="kb k-${esc(p.klass)}">${esc(p.klass)}</span>${p.mode === 'PAPER' ? '<span class="kb k-paper">paper</span>' : ''}</div>
+        <div class="tp"><div class="pc">${pct(p.pct)}</div><div class="pu">${usd(p.unrealizedUsd)}</div></div></div>
+      <div class="mc"><div><span>Scanner</span><b>${est(p.scanMcapComputed)}${kmc(p.scanMcapUsd)}</b></div><div><span>Bought</span><b>${est(p.entryMcapComputed)}${kmc(p.entryMcapUsd)}</b></div><div><span>Now</span><b>${est(p.mcapComputed)}${kmc(p.mcapUsd)}</b></div></div>
+      <div class="kv"><span>Size left</span><span>${money(p.remainingUsd)} <span class="sec">of ${money(p.sizeUsd)}</span></span></div>
+      ${p.soldFrac ? `<div class="kv"><span>Booked (${Math.round(p.soldFrac*100)}% sold)</span><span class="${p.bookedPnlUsd >= 0 ? 'green' : 'red'}">${usd(p.bookedPnlUsd)}</span></div>` : ''}
+      <div class="kv"><span>Stop</span><span>${price(p.stopPrice)} <span class="red">${num(p.stopPct) ? (p.stopPct > 0 ? '+' : '') + p.stopPct + '%' : ''}</span></span></div>
+      <div class="kv"><span>Trail</span>${trail}</div>
+      <div class="kv"><span>Held</span><span>${held(p.heldS)}</span></div></a>`;
+  }).join('');
+}
+
 // ---------------- render ----------------
 function render(fresh){
   const v = $('#view'); if (!v) return;
@@ -290,7 +316,7 @@ function render(fresh){
   const car = $('#car'), sl = car ? car.scrollLeft : 0, odov = $('#odo') ? $('#odo').innerHTML : null, odod = $('#odo') ? $('#odo').dataset.v : null;
   const sq = $('#sq'), sqv = sq && !$('#sbox').hidden ? sq.value : null;
   const r = route[0];
-  v.innerHTML = r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
+  v.innerHTML = r === 'trades' ? tradesTab() : r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
     : r === 'coin' ? coinScr(decodeURIComponent(route[1] || '')) : r === 'audit' ? auditScr(decodeURIComponent(route[1] || '')) : home();
   tabs(); after(fresh, sl, odov, odod, sqv);
 }
@@ -329,6 +355,7 @@ function search(q){
 function tabs(){
   const r = route[0], on = t => (r === t || (t === 'home' && (r === 'coin' || r === 'audit'))) ? 'on' : '';
   $('#tabs').innerHTML = `<a href="#/home" class="${on('home')}"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>Home</a>
+   <a href="#/trades" class="${on('trades')}"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9M15 6h5v5"/></svg>Trades</a>
    <a href="#/agents" class="${on('agents')}"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-3 3-5 6-5s6 2 6 5M12 20c0-3 2-5 4-5s6 2 6 5"/></svg>Agents</a>
    <a href="#/activity" class="${on('activity')}"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Activity</a>
    <a href="#/account" class="${on('account')}"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Account</a>`;
@@ -345,6 +372,7 @@ async function refreshFor(now){
   add('index', 30000, 'index.json', {quiet:1});
   if (r === 'home' || !cache['state.json']) add('chart' + range, 15000, 'chart_' + range + '.json');
   if (r === 'home' || r === 'activity') add('act', 15000, 'activity.json');
+  if (r === 'trades') add('trades', 15000, 'trades.json');
   if (r === 'agents') AG.forEach(n => add('ag' + n, 15000, `agents_${n}.json`));
   if (r === 'account'){ add('acc', 30000, 'account.json'); add('set', 60000, 'settings.json'); }
   if (r === 'coin') add('coin' + route[1], 10000, `coin_${decodeURIComponent(route[1])}.json`, {quiet:1});

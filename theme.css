@@ -123,3 +123,25 @@ body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opac
 @media (min-width:900px){.tabs{left:50%;right:auto;bottom:16px}}
 @media (prefers-reduced-motion:reduce){body:before,.dotr,.btn:after,.sk,.fade{animation:none!important}.ranges button,.tabs a,.rows .row{transition:none}}
 .dec>*{min-width:0}.dec .r,.dec .r .sec{white-space:normal;overflow-wrap:anywhere}html,body{overflow-x:hidden}
+/* ---- Open trades ---- */
+.thero{margin:6px 16px 14px;padding:18px;border-radius:22px;background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);position:relative;overflow:hidden}
+.thero:before{content:"";position:absolute;inset:-40% -20% auto auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(155,107,255,.35),transparent 70%);pointer-events:none}
+.thero .tl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.thero .tv{font-family:Unbounded,var(--font,system-ui);font-size:34px;font-weight:700;margin:4px 0 8px}
+.thero .tv.green{color:var(--green);text-shadow:0 0 18px rgba(45,255,179,.45)}.thero .tv.red{color:var(--red);text-shadow:0 0 18px rgba(255,61,127,.45)}
+.thero .ts{display:flex;gap:16px;font-size:13.5px;color:var(--t2)}.thero .ts b{color:#fff;font-weight:600}
+.tcard{display:block;margin:0 16px 12px;padding:14px 16px 8px;border-radius:20px;background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:inherit;text-decoration:none}
+.tcard.up{border-color:rgba(45,255,179,.35);box-shadow:0 0 22px -6px rgba(45,255,179,.45),inset 0 0 0 .5px rgba(45,255,179,.2)}
+.tcard.dn{border-color:rgba(255,61,127,.35);box-shadow:0 0 22px -6px rgba(255,61,127,.45),inset 0 0 0 .5px rgba(255,61,127,.2)}
+.tcard .th{display:flex;align-items:center;gap:12px}.tcard .tn{flex:1;min-width:0}
+.tcard .n{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.kb{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:99px;margin-right:4px}
+.k-new{color:#001a12;background:var(--green)}.k-hold{color:#fff;background:linear-gradient(90deg,var(--violet),var(--pink))}.k-old{color:#001318;background:var(--cyan)}.k-paper{color:var(--t2);border:1px solid var(--edge)}
+.tcard .tp{text-align:right}.tcard .pc{font-family:Unbounded,var(--font,system-ui);font-size:19px;font-weight:700}.tcard .pu{font-size:13px;font-weight:600;margin-top:2px}
+.tcard.up .pc,.tcard.up .pu{color:var(--green);text-shadow:0 0 12px rgba(45,255,179,.55)}.tcard.dn .pc,.tcard.dn .pu{color:var(--red);text-shadow:0 0 12px rgba(255,61,127,.55)}
+.tcard .mc{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 6px}
+.tcard .mc>div{background:rgba(255,255,255,.04);border-radius:12px;padding:7px 8px;text-align:center}
+.tcard .mc span{display:block;font-size:10.5px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}.tcard .mc b{font-size:14px;font-weight:600}.tcard .mc i{font-style:normal;color:var(--t2)}
+.tcard .kv{padding:6px 0;font-size:13.5px;border-top:.5px solid rgba(255,255,255,.06)}
+.tempty{text-align:center;padding:60px 24px;color:#fff;font-size:17px;font-weight:600}.tempty .sec{font-size:13.5px;font-weight:400;margin-top:6px}
+.tempty .orb{width:90px;height:90px;margin:0 auto 18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--cyan),var(--violet) 55%,transparent 72%);filter:blur(1px);opacity:.8}
