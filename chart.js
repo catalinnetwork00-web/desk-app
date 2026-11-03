@@ -1,7 +1,7 @@
 // chart.js - every chart drawn on <canvas>, devicePixelRatio aware. No library.
 (function(){
 const RM = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const COL = {green:'#00d35a', red:'#ff453a', blue:'#0a84ff', orange:'#ff9f0a', cyan:'#64d2ff', t2:'rgba(235,235,245,0.6)', t3:'rgba(235,235,245,0.3)', c2:'#2c2c2e', sep:'rgba(84,84,88,0.55)'};
+const COL = {green:'#2dffb3', red:'#ff3d7f', blue:'#9b6bff', orange:'#ffb547', cyan:'#4de8ff', t2:'rgba(235,235,245,0.6)', t3:'rgba(235,235,245,0.3)', c2:'rgba(160,140,255,0.16)', sep:'rgba(160,140,255,0.14)'};
 function setup(cv){
   const dpr = window.devicePixelRatio || 1, r = cv.getBoundingClientRect();
   const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
@@ -35,21 +35,25 @@ function line(cv, data, prev){
     const g = x.createLinearGradient(0, top, 0, bot); g.addColorStop(0, 'rgba(0,211,90,0.28)'); g.addColorStop(1, 'rgba(0,211,90,0)');
     x.beginPath(); P.forEach((p,i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.lineTo(P[P.length-1][0], bot); x.lineTo(P[0][0], bot); x.closePath(); x.fillStyle = g; x.fill();
     x.beginPath(); P.forEach((p,i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.strokeStyle = COL.green; x.lineWidth = 2; x.lineJoin = 'round'; x.stroke();
-    // marks above the line; never overlap: a later mark moves up a row
-    x.font = FONT; const rows = []; const RH = 20;
-    ((data && data.marks) || []).forEach(m => {
-      if (m.ts < t1 - 60) return;
+    // marks: newest first; a label is drawn only if it fits in one of 2 rows without overlapping, else just a dot on the line
+    x.font = FONT; const rows = [[], []]; const RH = 20, MAXL = 6; let nl = 0;
+    const ms = ((data && data.marks) || []).filter(m => m.ts >= t1 - 60).slice().sort((a, b) => b.ts - a.ts);
+    ms.forEach(m => {
       const mx = Math.min(Math.max(X(Math.min(m.ts, t2)), 4), w - 4), tw = x.measureText(m.text).width + 14;
-      let lx = Math.min(Math.max(mx - tw/2, 0), w - tw);
+      const lx = Math.min(Math.max(mx - tw/2, 0), w - tw);
       const near = pts.reduce((b, p) => Math.abs(p[0]-m.ts) < Math.abs(b[0]-m.ts) ? p : b, pts[0]);
-      let row = 0; while ((rows[row] || []).some(s => lx < s[1] + 4 && lx + tw > s[0] - 4)) row++;
-      (rows[row] = rows[row] || []).push([lx, lx + tw]);
-      const ly = Math.max(2, Math.min(Y(near[1]) - 30, top - 4) - row * RH);
+      const c = COL[m.color] || COL.blue, py = Y(near[1]);
       x.globalAlpha = seen.has(m.ts + m.text) ? 1 : ka;
-      const c = COL[m.color] || COL.blue;
-      x.fillStyle = c; x.beginPath(); x.roundRect ? x.roundRect(lx, ly, tw, 18, 9) : x.rect(lx, ly, tw, 18); x.fill();
-      x.fillStyle = m.color === 'green' ? '#000' : '#fff'; x.fillText(m.text, lx + 7, ly + 13);
-      x.strokeStyle = c; x.lineWidth = 1; x.beginPath(); x.moveTo(mx, ly + 18); x.lineTo(mx, Y(near[1])); x.stroke();
+      const row = nl < MAXL ? rows.findIndex(r => !r.some(s => lx < s[1] + 6 && lx + tw > s[0] - 6)) : -1;
+      if (row >= 0){
+        rows[row].push([lx, lx + tw]); nl++;
+        const ly = 2 + row * RH;
+        x.fillStyle = c; x.beginPath(); x.roundRect ? x.roundRect(lx, ly, tw, 18, 9) : x.rect(lx, ly, tw, 18); x.fill();
+        x.fillStyle = m.color === 'green' ? '#000' : '#fff'; x.fillText(m.text, lx + 7, ly + 13);
+        x.strokeStyle = c; x.lineWidth = 1; x.globalAlpha *= .55; x.beginPath(); x.moveTo(mx, ly + 18); x.lineTo(mx, py); x.stroke();
+        x.globalAlpha = seen.has(m.ts + m.text) ? 1 : ka;
+      }
+      x.fillStyle = c; x.beginPath(); x.arc(mx, py, 3, 0, Math.PI * 2); x.fill();
       x.globalAlpha = 1;
     });
     if (k < 1 || ka < 1) requestAnimationFrame(frame);
