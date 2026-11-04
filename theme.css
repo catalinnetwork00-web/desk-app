@@ -148,6 +148,17 @@ body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opac
 
 /* G-Wagon wallpaper: fixed layer (iOS ignores background-attachment:fixed), darkened for legibility; aurora sits on top as a tint */
 html:before{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;background-color:#07060f;
- background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon-sm.webp?v=20261104s");
+ background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon-sm.webp?v=20261104b");
  background-size:cover;background-position:center 42%;background-repeat:no-repeat}
-@media (min-resolution:2.5dppx),(min-width:600px){html:before{background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon.webp?v=20261104s")}}
+@media (min-resolution:2.5dppx),(min-width:600px){html:before{background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon.webp?v=20261104b")}}
+
+/* trades: Open | Best segment + best cards */
+.seg{display:flex;margin:0 16px 10px;padding:3px;border-radius:16px;background:var(--glass);border:1px solid var(--edge)}
+.seg a{flex:1;text-align:center;min-height:38px;line-height:38px;border-radius:13px;font:600 13px var(--disp);letter-spacing:.5px;color:var(--t2);text-decoration:none}
+.seg a.on{color:#0a0618;background:linear-gradient(90deg,var(--cyan),var(--green))}
+.bseg{margin:0 6px 4px}
+.bbest{margin-top:10px;font-size:13.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bbest b{color:#fff}
+.tcard .th{color:inherit;text-decoration:none}
+.brk{min-width:22px;font:700 14px var(--disp);color:var(--t3);align-self:center}
+.bsym{font-size:12px;font-weight:500}
+.bfomo{display:flex;align-items:center;justify-content:center;min-height:44px;margin:8px 0 6px;border-radius:14px;font:700 13px var(--disp);letter-spacing:.4px;color:#07060f;background:linear-gradient(90deg,var(--cyan),var(--green));text-decoration:none}

@@ -288,7 +288,7 @@ const held = s => !num(s) ? '—' : s < 3600 ? Math.max(1, Math.round(s/60)) + '
 const usd = v => !num(v) ? '—' : (v >= 0 ? '+' : '-') + money(Math.abs(v));
 function tradesTab(){
   const t = cache['trades.json'];
-  let h = `<div class="nav"><span class="title lg">Open trades</span></div>` + errRow();
+  let h = `<div class="nav"><span class="title lg">Open trades</span></div>` + seg('open') + errRow();
   if (!t) return h + sk(120) + sk(220) + sk(220);
   const P = t.positions || [], tc = t.openPnlUsd >= 0 ? 'green' : 'red';
   h += `<div class="thero"><div class="tl">Open PnL</div><div class="tv ${tc}">${usd(t.openPnlUsd)}</div>
@@ -309,6 +309,33 @@ function tradesTab(){
   }).join('');
 }
 
+
+// ---------------- best trades (segment inside Trades) ----------------
+const seg = on => `<div class="seg"><a href="#/trades" class="${on === 'open' ? 'on' : ''}">Open</a><a href="#/trades/best" class="${on === 'best' ? 'on' : ''}">Best</a></div>`;
+let bestR = localStorage.getItem('bestR') || 'today';
+function bestTab(){
+  const b = cache['best.json'];
+  let h = `<div class="nav"><span class="title lg">Best trades</span></div>` + seg('best') + errRow();
+  h += `<div class="ranges bseg">${[['today','Today'],['7d','7 days'],['all','All']].map(([k,l]) => `<button data-b="${k}" class="${bestR === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  if (!b) return h + sk(120) + sk(160) + sk(160);
+  const R = (b.ranges || {})[bestR] || {rows: []}, bt = R.best;
+  h += `<div class="thero"><div class="tl">Total won</div><div class="tv green">${usd(R.wonUsd)}</div>
+    <div class="ts"><span><b>${R.winners}</b> winner${R.winners === 1 ? '' : 's'} of ${R.coins}</span><span>Net <b class="${R.netUsd >= 0 ? 'green' : 'red'}">${usd(R.netUsd)}</b></span></div>
+    ${bt ? `<div class="bbest">Best: <b>${esc(dname(bt.name || bt.symbol, bt.mint))}</b> <span class="green">${usd(bt.pnlUsd)} · ${pct(bt.pct)}</span></div>` : ''}</div>`;
+  if (!R.rows.length) return h + `<div class="tempty"><div class="orb"></div><div>No closed trades ${bestR === 'today' ? 'today' : 'in this range'}</div><div class="sec">Closed trades show up here, best first.</div></div>`;
+  return h + R.rows.map((p, i) => {
+    const nm = dname(p.name || p.symbol, p.mint), c = p.pnlUsd > 0 ? 'up' : p.pnlUsd < 0 ? 'dn' : '';
+    const sym = p.symbol && p.symbol !== p.name ? `<span class="sec bsym">${esc(p.symbol)}</span>` : '';
+    return `<div class="tcard ${c}"><a class="th" href="#/coin/${encodeURIComponent(p.mint)}"><div class="brk">${i + 1}</div>${coinAva(nm, p.mint, 40)}<div class="tn"><div class="n">${esc(nm)} ${sym}</div><span class="kb k-${esc(p.klass)}">${esc(p.klass)}</span>${p.mode === 'PAPER' ? '<span class="kb k-paper">paper</span>' : ''}</div>
+        <div class="tp"><div class="pc ${c === 'up' ? 'green' : c === 'dn' ? 'red' : ''}">${usd(p.pnlUsd)}</div><div class="pu">${pct(p.pct)}</div></div></a>
+      <div class="kv"><span>Got / spent</span><span>${money(p.receivedUsd)} <span class="sec">for ${money(p.spentUsd)}${p.trades > 1 ? ' · ' + p.trades + ' trades' : ''}</span></span></div>
+      <div class="kv"><span>Bought at</span><span>${p.entryMcapComputed ? '<i title="estimated">~</i>' : ''}${kmc(p.entryMcapUsd)} mcap</span></div>
+      <div class="kv"><span>Peak gain</span><span>${num(p.peakPct) ? pct(p.peakPct) : '—'}</span></div>
+      <div class="kv"><span>Held</span><span>${held(p.heldS)}</span></div>
+      ${url(p.coin_url) ? `<a class="bfomo" href="${url(p.coin_url)}" target="_blank" rel="noopener">Open on FOMO</a>` : ''}</div>`;
+  }).join('');
+}
+
 // ---------------- render ----------------
 function render(fresh){
   const v = $('#view'); if (!v) return;
@@ -316,7 +343,7 @@ function render(fresh){
   const car = $('#car'), sl = car ? car.scrollLeft : 0, odov = $('#odo') ? $('#odo').innerHTML : null, odod = $('#odo') ? $('#odo').dataset.v : null;
   const sq = $('#sq'), sqv = sq && !$('#sbox').hidden ? sq.value : null;
   const r = route[0];
-  v.innerHTML = r === 'trades' ? tradesTab() : r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
+  v.innerHTML = r === 'trades' ? (route[1] === 'best' ? bestTab() : tradesTab()) : r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
     : r === 'coin' ? coinScr(decodeURIComponent(route[1] || '')) : r === 'audit' ? auditScr(decodeURIComponent(route[1] || '')) : home();
   tabs(); after(fresh, sl, odov, odod, sqv);
 }
@@ -327,7 +354,8 @@ function after(fresh, sl, odov, odod, sqv){
   const ln = $('#line'); if (ln){ const k = 'chart_' + range + '.json'; const d = cache[k]; if (d){ DeskChart.line(ln, d, prevChart[k]); prevChart[k] = d; } }
   document.querySelectorAll('canvas[data-ring]').forEach(c => DeskChart.ring(c, c.dataset.ring === '' ? null : +c.dataset.ring, +c.dataset.green || 70));
   const cd = $('#cand'); if (cd){ const c = cache[`coin_${decodeURIComponent(route[1])}.json`]; if (c) DeskChart.candles(cd, c.candles, c.exit ? c.exit.exitLine : null); }
-  document.querySelectorAll('.ranges button').forEach(b => b.onclick = () => { range = b.dataset.r; localStorage.setItem('range', range); render(); load('chart_' + range + '.json').then(() => render()); });
+  document.querySelectorAll('.bseg button').forEach(b => b.onclick = () => { bestR = b.dataset.b; localStorage.setItem('bestR', bestR); render(); });
+  document.querySelectorAll('.ranges:not(.bseg) button').forEach(b => b.onclick = () => { range = b.dataset.r; localStorage.setItem('range', range); render(); load('chart_' + range + '.json').then(() => render()); });
   const sb = $('#sbtn'); if (sb) sb.onclick = () => { const bx = $('#sbox'); bx.hidden = !bx.hidden; if (!bx.hidden) $('#sq').focus(); };
   if (sqv != null){ $('#sbox').hidden = false; $('#sq').value = sqv; search(sqv); }
   const sq = $('#sq'); if (sq) sq.oninput = () => search(sq.value);
@@ -372,7 +400,7 @@ async function refreshFor(now){
   add('index', 30000, 'index.json', {quiet:1});
   if (r === 'home' || !cache['state.json']) add('chart' + range, 15000, 'chart_' + range + '.json');
   if (r === 'home' || r === 'activity') add('act', 15000, 'activity.json');
-  if (r === 'trades') add('trades', 15000, 'trades.json');
+  if (r === 'trades') route[1] === 'best' ? add('best', 30000, 'best.json') : add('trades', 15000, 'trades.json');
   if (r === 'agents') AG.forEach(n => add('ag' + n, 15000, `agents_${n}.json`));
   if (r === 'account'){ add('acc', 30000, 'account.json'); add('set', 60000, 'settings.json'); }
   if (r === 'coin') add('coin' + route[1], 10000, `coin_${decodeURIComponent(route[1])}.json`, {quiet:1});
