@@ -10,14 +10,14 @@
  --edge:inset 0 0 0 .5px rgba(200,185,255,.22),inset 0 1px 0 rgba(255,255,255,.08);
  --gg:0 0 18px rgba(45,255,179,.35);--rg:0 0 18px rgba(255,61,127,.38)}
 html{background:var(--bg)}
-body{background:var(--bg);font-family:var(--text);letter-spacing:.1px;font-variant-numeric:tabular-nums}
+body{background:transparent!important;font-family:var(--text);letter-spacing:.1px;font-variant-numeric:tabular-nums}
 /* cosmic backdrop: aurora blobs + star dust + grain (fixed, behind everything) */
 body:before{content:"";position:fixed;inset:-20%;z-index:-2;pointer-events:none;
  background:radial-gradient(40% 32% at 18% 12%,rgba(155,107,255,.38),transparent 70%),
   radial-gradient(38% 30% at 88% 22%,rgba(255,79,216,.22),transparent 70%),
   radial-gradient(46% 36% at 70% 88%,rgba(77,232,255,.20),transparent 70%),
   radial-gradient(30% 26% at 10% 78%,rgba(45,255,179,.12),transparent 70%),
-  linear-gradient(180deg,#0d0a22 0%,#07060f 55%,#050410 100%);
+  linear-gradient(180deg,rgba(13,10,34,.25) 0%,rgba(7,6,15,.1) 55%,rgba(5,4,16,.3) 100%);
  filter:saturate(120%);animation:aurora 26s ease-in-out infinite alternate}
 body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;mix-blend-mode:screen;
  background-image:radial-gradient(1px 1px at 12% 18%,#fff8,transparent 60%),radial-gradient(1px 1px at 72% 9%,#fff6,transparent 60%),
@@ -145,3 +145,9 @@ body:after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opac
 .tcard .kv{padding:6px 0;font-size:13.5px;border-top:.5px solid rgba(255,255,255,.06)}
 .tempty{text-align:center;padding:60px 24px;color:#fff;font-size:17px;font-weight:600}.tempty .sec{font-size:13.5px;font-weight:400;margin-top:6px}
 .tempty .orb{width:90px;height:90px;margin:0 auto 18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--cyan),var(--violet) 55%,transparent 72%);filter:blur(1px);opacity:.8}
+
+/* G-Wagon wallpaper: fixed layer (iOS ignores background-attachment:fixed), darkened for legibility; aurora sits on top as a tint */
+html:before{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;background-color:#07060f;
+ background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon-sm.webp?v=20261104s");
+ background-size:cover;background-position:center 42%;background-repeat:no-repeat}
+@media (min-resolution:2.5dppx),(min-width:600px){html:before{background-image:linear-gradient(180deg,rgba(7,6,15,.86) 0%,rgba(7,6,15,.58) 30%,rgba(7,6,15,.5) 48%,rgba(7,6,15,.72) 70%,rgba(5,4,16,.9) 100%),url("bg/gwagon.webp?v=20261104s")}}
