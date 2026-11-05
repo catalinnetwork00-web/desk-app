@@ -337,27 +337,106 @@ function bestTab(){
 }
 
 // ---------------- render ----------------
+// Polls (~5s state, plus the other JSON cadences) patch the live tree.
+// A full #view wipe happens only when the route changes (or the shell is not built yet).
+let builtKey = '', builtHTML = '';
+const drawn = new WeakMap();
+function screenHTML(){
+  const r = route[0];
+  return r === 'trades' ? (route[1] === 'best' ? bestTab() : tradesTab()) : r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
+    : r === 'coin' ? coinScr(decodeURIComponent(route[1] || '')) : r === 'audit' ? auditScr(decodeURIComponent(route[1] || '')) : home();
+}
+function sameNode(a, b){
+  if (a.nodeType !== b.nodeType) return false;
+  if (a.nodeType === 3 || a.nodeType === 8) return true;
+  if (a.nodeType !== 1 || a.nodeName !== b.nodeName) return false;
+  return !((a.id || b.id) && a.id !== b.id);
+}
+function syncAttrs(node, src){
+  const sa = src.attributes, canvas = node.nodeName === 'CANVAS';
+  for (let i = 0; i < sa.length; i++){ const a = sa[i]; if (node.getAttribute(a.name) !== a.value) node.setAttribute(a.name, a.value); }
+  for (let i = node.attributes.length - 1; i >= 0; i--){
+    const name = node.attributes[i].name;
+    if (src.hasAttribute(name)) continue;
+    if (canvas && (name === 'width' || name === 'height')) continue;   // chart.js bitmap; dropping these clears the canvas
+    node.removeAttribute(name);
+  }
+  if (!canvas && (node.nodeName === 'INPUT' || node.nodeName === 'TEXTAREA' || node.nodeName === 'SELECT') && node.id !== 'sq' && node.value !== src.value) node.value = src.value;
+}
+// #odo is owned by the digit strip (odo()); an open search box is owned by the typed query.
+function patchNode(node, src){
+  if (node.nodeType === 3){ if (node.nodeValue !== src.nodeValue) node.nodeValue = src.nodeValue; return; }
+  if (node.nodeType !== 1) return;
+  if (node.id === 'odo') return;
+  if (node.id === 'sbox' && !node.hidden) return;
+  syncAttrs(node, src);
+  if (node.nodeName === 'CANVAS') return;
+  morphChildren(node, src);
+}
+function morphChildren(live, src){
+  const want = src.childNodes, n = want.length;
+  for (let i = 0; i < n; i++){
+    const t = want[i], node = live.childNodes[i];
+    if (!node) live.appendChild(t.cloneNode(true));
+    else if (!sameNode(node, t)) node.replaceWith(t.cloneNode(true));
+    else patchNode(node, t);
+  }
+  while (live.childNodes.length > n) live.removeChild(live.lastChild);
+}
+function patchView(live, html){
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  morphChildren(live, d);
+}
+function drawBox(cv){ const r = cv.getBoundingClientRect(); return Math.round(r.width) + 'x' + Math.round(r.height); }
 function render(fresh){
   const v = $('#view'); if (!v) return;
-  if (!BASE || !D){ v.innerHTML = `<div class="nav"><span class="title brand">yCeeBee <span>Desk</span></span></div><div class="emptyline" style="padding-top:120px">Open this app once with the link from Grok Bot.</div>`; tabs(); return; }
-  const car = $('#car'), sl = car ? car.scrollLeft : 0, odov = $('#odo') ? $('#odo').innerHTML : null, odod = $('#odo') ? $('#odo').dataset.v : null;
+  if (!BASE || !D){ v.innerHTML = `<div class="nav"><span class="title brand">yCeeBee <span>Desk</span></span></div><div class="emptyline" style="padding-top:120px">Open this app once with the link from Grok Bot.</div>`; builtKey = ''; builtHTML = ''; tabs(); return; }
+  const html = screenHTML();
+  const key = route.join('/');
+  const car = $('#car'), sl = car ? car.scrollLeft : 0;
   const sq = $('#sq'), sqv = sq && !$('#sbox').hidden ? sq.value : null;
-  const r = route[0];
-  v.innerHTML = r === 'trades' ? (route[1] === 'best' ? bestTab() : tradesTab()) : r === 'agents' ? agentsTab() : r === 'activity' ? activityTab() : r === 'account' ? accountTab()
-    : r === 'coin' ? coinScr(decodeURIComponent(route[1] || '')) : r === 'audit' ? auditScr(decodeURIComponent(route[1] || '')) : home();
-  tabs(); after(fresh, sl, odov, odod, sqv);
+  const sx = window.scrollX, sy = window.scrollY;
+  const full = !!fresh || builtKey !== key || !v.firstChild;
+  if (full){ v.innerHTML = html; builtKey = key; }
+  else if (html !== builtHTML) patchView(v, html);
+  builtHTML = html;
+  tabs(); after(fresh, sl, sqv);
+  if (!full && (window.scrollX !== sx || window.scrollY !== sy)) window.scrollTo(sx, sy);
 }
-function after(fresh, sl, odov, odod, sqv){
+function after(fresh, sl, sqv){
   const st = cache['state.json'];
-  const o = $('#odo'); if (o && st){ if (odov != null && !fresh){ o.innerHTML = odov; o.dataset.v = odod; } odo(o, money(st.balance)); }
+  const o = $('#odo'); if (o && st) odo(o, money(st.balance));
   const car = $('#car'); if (car && !fresh) car.scrollLeft = sl;
-  const ln = $('#line'); if (ln){ const k = 'chart_' + range + '.json'; const d = cache[k]; if (d){ DeskChart.line(ln, d, prevChart[k]); prevChart[k] = d; } }
-  document.querySelectorAll('canvas[data-ring]').forEach(c => DeskChart.ring(c, c.dataset.ring === '' ? null : +c.dataset.ring, +c.dataset.green || 70));
-  const cd = $('#cand'); if (cd){ const c = cache[`coin_${decodeURIComponent(route[1])}.json`]; if (c) DeskChart.candles(cd, c.candles, c.exit ? c.exit.exitLine : null); }
+  const ln = $('#line');
+  if (ln){
+    const k = 'chart_' + range + '.json', d = cache[k];
+    if (d){
+      const sig = k + ':' + (ln.dataset.flat || '') + '@' + drawBox(ln);
+      if (ln._data !== d || drawn.get(ln) !== sig || !ln.width){
+        DeskChart.line(ln, d, ln._ck === k ? prevChart[k] : null);
+        prevChart[k] = d; ln._ck = k; ln._data = d; drawn.set(ln, sig);
+      }
+    }
+  }
+  document.querySelectorAll('canvas[data-ring]').forEach(c => {
+    const sig = (c.dataset.ring || '') + '/' + (c.dataset.green || '') + '@' + drawBox(c);
+    if (drawn.get(c) === sig && c.width) return;
+    DeskChart.ring(c, c.dataset.ring === '' ? null : +c.dataset.ring, +c.dataset.green || 70);
+    drawn.set(c, sig);
+  });
+  const cd = $('#cand');
+  if (cd){
+    const c = cache[`coin_${decodeURIComponent(route[1] || '')}.json`];
+    if (c){
+      const sig = 'cand@' + drawBox(cd);
+      if (cd._data !== c || drawn.get(cd) !== sig || !cd.width){ DeskChart.candles(cd, c.candles, c.exit ? c.exit.exitLine : null); cd._data = c; drawn.set(cd, sig); }
+    }
+  }
   document.querySelectorAll('.bseg button').forEach(b => b.onclick = () => { bestR = b.dataset.b; localStorage.setItem('bestR', bestR); render(); });
   document.querySelectorAll('.ranges:not(.bseg) button').forEach(b => b.onclick = () => { range = b.dataset.r; localStorage.setItem('range', range); render(); load('chart_' + range + '.json').then(() => render()); });
   const sb = $('#sbtn'); if (sb) sb.onclick = () => { const bx = $('#sbox'); bx.hidden = !bx.hidden; if (!bx.hidden) $('#sq').focus(); };
-  if (sqv != null){ $('#sbox').hidden = false; $('#sq').value = sqv; search(sqv); }
+  if (sqv != null){ const box = $('#sbox'), el = $('#sq'); if (box && el){ box.hidden = false; if (el.value !== sqv) el.value = sqv; search(sqv); } }
   const sq = $('#sq'); if (sq) sq.oninput = () => search(sq.value);
   const bell = $('#bell'); if (bell) bell.onclick = () => { const rows = (cache['activity.json'] || {}).rows || []; if (rows[0]) localStorage.setItem('seen', rows[0].id); };
   const inv = $('#invite'); if (inv) inv.onclick = async () => {
@@ -380,9 +459,13 @@ function search(q){
   const hit = out.filter(o => (o.mint + ' ' + (o.name || '')).toLowerCase().includes(q)).slice(0, 8);
   box.innerHTML = hit.length ? hit.map(o => `<a class="row" href="#/coin/${encodeURIComponent(o.mint)}"><div class="ava">${esc((o.name || '?')[0])}</div><div class="m"><div>${esc(o.name || '')}</div><div class="ter" style="font-size:12px">${esc(o.mint)}</div></div></a>`).join('') : '<div class="sec" style="padding:10px 0">No match</div>';
 }
+let tabsOn = '';
 function tabs(){
-  const r = route[0], on = t => (r === t || (t === 'home' && (r === 'coin' || r === 'audit'))) ? 'on' : '';
-  $('#tabs').innerHTML = `<a href="#/home" class="${on('home')}"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>Home</a>
+  const r = route[0] || 'home', key = (r === 'coin' || r === 'audit') ? 'home' : r, nav = $('#tabs');
+  if (!nav || (tabsOn === key && nav.childElementCount)) return;
+  tabsOn = key;
+  const on = t => (r === t || (t === 'home' && (r === 'coin' || r === 'audit'))) ? 'on' : '';
+  nav.innerHTML = `<a href="#/home" class="${on('home')}"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>Home</a>
    <a href="#/trades" class="${on('trades')}"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9M15 6h5v5"/></svg>Trades</a>
    <a href="#/agents" class="${on('agents')}"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20c0-3 3-5 6-5s6 2 6 5M12 20c0-3 2-5 4-5s6 2 6 5"/></svg>Agents</a>
    <a href="#/activity" class="${on('activity')}"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Activity</a>
