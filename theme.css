@@ -162,3 +162,18 @@ html:before{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;bac
 .brk{min-width:22px;font:700 14px var(--disp);color:var(--t3);align-self:center}
 .bsym{font-size:12px;font-weight:500}
 .bfomo{display:flex;align-items:center;justify-content:center;min-height:44px;margin:8px 0 6px;border-radius:14px;font:700 13px var(--disp);letter-spacing:.4px;color:#07060f;background:linear-gradient(90deg,var(--cyan),var(--green));text-decoration:none}
+
+/* Calm backdrop for desktop Chrome and reduced motion.
+   Phones under 600px keep the animated aurora, SVG grain, and glass blur.
+   Wide viewports stop the aurora (and its saturate filter), drop the turbulence
+   grain, and paint cards/tabs with solid translucent fills so Chrome does not
+   re-blur the G-Wagon wallpaper every frame. The wallpaper itself stays. */
+@media (min-width:600px),(prefers-reduced-motion:reduce){
+ body:before{animation:none;filter:none}
+ body:after{background-image:radial-gradient(1px 1px at 12% 18%,#fff8,transparent 60%),radial-gradient(1px 1px at 72% 9%,#fff6,transparent 60%),
+  radial-gradient(1.2px 1.2px at 38% 46%,#cfc4ff88,transparent 60%),radial-gradient(1px 1px at 86% 61%,#fff5,transparent 60%),
+  radial-gradient(1px 1px at 22% 83%,#9ff5ff77,transparent 60%),radial-gradient(1px 1px at 58% 74%,#fff4,transparent 60%)}
+ .acard,.fcard,.stats{background:rgba(16,12,36,.9)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+ .thero,.tcard{background:rgba(16,12,36,.9);-webkit-backdrop-filter:none;backdrop-filter:none}
+ .tabs{background:rgba(10,8,24,.94);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
